@@ -357,7 +357,7 @@ state running
                     
                     if(llGetListLength(otherUserKey) > 0 && llGetListLength(otherUserKey) <= 11)
                     {
-                        Buttons += n;
+                        Buttons += n;//test
                     }
                     if(llGetListLength(otherUserKey) > 11)
                     {
