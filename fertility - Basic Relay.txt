@@ -1,0 +1,36 @@
+default
+{
+    state_entry()
+    {
+        llListen(1,"","","");
+    }
+    listen(integer c, string n, key id, string m)
+    {
+        if(id == llGetOwner() || llGetOwnerKey(id) == llGetOwner())//only listen to ownerand owner objects with relay
+        {
+            //do
+            if(llToLower(m) == "cycle")
+            {
+                llMessageLinked(LINK_SET, -1, "getcyclestage",id);
+            }
+        }
+        else
+        {
+            //ask permission
+        }
+    }
+    link_message(integer link, integer n, string m, key id)
+    {
+        list data  = llParseString2List(m, ["|"],[""]);
+        if(llList2String(data,0) == "CycleStage")
+        {
+            string msg = "test: ";
+            if(llList2Integer(data,1) == -1 )msg +="Pregnant.";
+            if(llList2Integer(data,1) == 0 )msg +="Ovulate soon.";
+            if(llList2Integer(data,1) == 1 )msg +="Fertile.";
+            if(llList2Integer(data,1) == 2 )msg +="Period.";
+            if(llList2Integer(data,1) == 2 )msg +="Recovery.";
+            llOwnerSay(msg);
+        }
+    }
+}

@@ -1,0 +1,749 @@
+/*
+Fertility was made for use on os grids.
+Its intended to be open source and written in such a way that other huds dont have power over this one unless its given. ((any commands that could change things in the hud have to come from the owner or ask permission, none yet))
+Any mods or additions made for this hud, please release them open source as well.
+Please leave this header intact.
+
+Base code written by Matthew Stevenson of youth nation.
+*/
+string noteName = "Fertility - Data";
+key Owner;
+
+//Female only
+list spermDonors = [];
+list spermExpires = [];
+integer maxDonors = 6;
+
+key babyDaddyKey = NULL_KEY;
+//string babyDaddyName = "";
+
+
+//female cycle variables
+integer cycleTimer; //timer set to unix time
+//integer cycleTimerNext; //timer set to unix time
+list nextCycleEventName = ["Ovulate", "Fertile", "Period", "Recovery"];//named events to come
+list nextCycleEventRotations = [<0.7, 0, 0, 0.7>, <0, 0, 0, 1>, <-0.5, 0.5, 0.5, 0.5>, <-0.7, 0, 0, 0.7>, <1, 0, 0, 0>];
+list nextCycleEventTime = [5,5,5,15];//time in rp days till cycle restarts.
+
+//cycle timers
+integer cycleStage = 0; //ovulate = 0, fertile = 1, period = 2, recovery = 3, -1 pregnant.
+
+integer nextRPDay;// used to track next rp day.
+integer rpDay = 0;//keep track of days to push stage forward
+integer offlineRPDays = 0;
+
+//main variables
+integer dayLength = 6; //how many rl hours in a rp day
+integer pregnancyDay = 0; //current rp days out of pregnancyTermLengthInDay
+integer pregnancyTermLengthInDay = 280; //how long a term lasts before a baby can be born
+integer termWeek = 0;
+integer canBirth = FALSE;
+
+//Force/RLV
+integer canForce = FALSE;// if you make this true then the mod for force can force you to target others. How that is doen is defined there.
+
+//Fertility chance
+integer fertilityChance = 30;//Chance that all goes right and the egg fertilizes and implants. if set to 0 no cycle will run.
+
+//Male only
+integer lastPewPew;
+float cumBar = 0;//from 0.0 to 1.0.
+
+//Shared globals
+integer gender = -1; // 0 male 1 female 2 both
+
+//nearby users
+//list nearbyUserKey = [];
+list otherUserKey = [];
+list otherUserGender = [];
+list otherRegionUserGender = [];
+list usersTargetingMe = [];
+
+//buffered lists
+list otherUserKeyTemp = [];
+list otherUserGenderTemp = [];
+list otherRegionUserGenderTemp = [];
+list usersTargetingMeTemp = [];
+
+//partnered variables
+integer isLinked = FALSE;
+key currentTarget = NULL_KEY;
+
+//hud info
+list linkedButtons = [];//a list of all prims linked to the hud
+
+//listener channels
+integer pingChannel= -91283;//arbitray but static ping channel
+integer pingRegionChannel = -91284;//arbitray but static region ping channel
+integer menuChannel;//based on avi key
+
+//Timers
+integer tick = 0;//20 ticks, to give time for various things to happen and make changes before each new cycle begins.
+integer scanTick = 0;
+integer saveTick = 0;
+integer timerDelay = 3;//how often each timer cycles
+
+//longpress
+integer held = FALSE;
+integer longPress =0;
+
+//functions:
+list saveData()
+{
+    llRemoveInventory(noteName);
+    list data = [];
+    if(gender == -1)return [-1];
+    data += ["Owner|"+(string)llGetOwner()];
+    data += ["TOD|"+(string)cycleTimer];
+    if(gender == 0)
+    {
+        data += ["Gender|0"];
+    }
+    if(gender == 1)
+    {
+        data += ["Gender|1"];
+        data += ["CycleStage|"+(string)cycleStage];
+        if(cycleStage != -1)
+        {
+            data += ["Donors|"+llDumpList2String(spermDonors,[","])];
+            data += ["Expires|"+llDumpList2String(spermExpires,[","])];
+        }
+        else
+        {
+            data += ["BabyDaddy|"+(string)babyDaddyKey];
+            data += ["TermDay|"+(string)pregnancyDay];
+        }
+    }
+    return data;
+}
+loadNote(list data)
+{
+    //list data = [];
+    integer i;
+    for(i=0; i<llGetListLength(data); i++)
+    {
+        list temp = llParseString2List(llList2String(data,i), ["|"],[""]);
+        if(llList2String(temp,0) == "Owner")Owner = (key)llList2Key(temp,1);
+        if(llList2String(temp,0) == "Gender")gender = (integer)llList2Integer(temp,1);
+        if(llList2String(temp,0) == "TOD")cycleTimer = (integer)llList2Integer(temp,1);
+        if(llList2String(temp,0) == "Donors")spermDonors = llParseString2List(llList2String(temp,1),[","],[""]);
+        if(llList2String(temp,0) == "Expires")spermExpires = llParseString2List(llList2String(temp,1),[","],[""]);
+        if(llList2String(temp,0) == "BabyDaddy")babyDaddyKey = (string)llList2String(temp,1);
+        if(llList2String(temp,0) == "TermDay")pregnancyDay = (integer)llList2Integer(temp,1);
+        if(llList2String(temp,0) == "CycleStage")cycleStage = (integer)llList2Integer(temp,1);
+        //llOwnerSay("Loaded: "+llList2String(temp,0)+" = "+llList2String(temp,1));
+    }
+}
+updateLinkAlphas()
+{
+    llSetLinkAlpha(llListFindList(linkedButtons, ["fertility Hud"])+2,1,ALL_SIDES);
+    if(gender == 0)//your a boy show boys stuff
+    {
+        llSetLinkAlpha(llListFindList(linkedButtons, ["Cum"])+2,(cumBar+0.1),ALL_SIDES);
+        
+            if(llGetListLength(otherUserGender) == 0)
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Girl Detected"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Girl Detected"])+2,1,ALL_SIDES);
+            }
+            if(llGetListLength(otherUserKey) == 0)
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Girl"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Girl"])+2,1,ALL_SIDES);
+            }
+            if(usersTargetingMe == [])
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["girl Hearts"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["girl Hearts"])+2,1,ALL_SIDES);
+            }
+        }
+        if(gender == 1)//your a girl show girl stuff
+        {
+            integer i;
+            for(i=0; i<6; i++)
+            {
+                if(i==4 || i== 5)llSetLinkAlpha(llListFindList(linkedButtons, ["Cycle"])+2,1,i);
+            }
+            //set cycle link rotation
+            if(llGetListLength(otherUserGender) == 0)
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Boy Detected"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Boy Detected"])+2,1,ALL_SIDES);
+            }
+            if(llGetListLength(otherUserKey) == 0)
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Boy"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["Boy"])+2,1,ALL_SIDES);
+            }
+            if(usersTargetingMe == [])
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["boy Hearts"])+2,0,ALL_SIDES);
+            }
+            else
+            {
+                llSetLinkAlpha(llListFindList(linkedButtons, ["boy Hearts"])+2,1,ALL_SIDES);
+            }
+        }
+
+            if(currentTarget == NULL_KEY) 
+            {
+                llSetText("",<1,1,1>,1);
+            }
+            else
+            {
+                integer i;
+                if(llListFindList(usersTargetingMe,currentTarget) != -1 )
+                {
+                    llSetText("❤❤ "+llGetDisplayName(currentTarget)+" ❤❤", <1,1,1>,1);
+                }
+                else
+                {
+                    llSetText(">> "+llGetDisplayName(currentTarget), <1,1,1>,1);
+                }
+            }
+}
+
+default
+{
+    state_entry()
+    {
+        //llOwnerSay("Welcome to Fertility. Starting up.");
+        if (llGetInventoryKey(noteName) != NULL_KEY)
+        {
+            //llOwnerSay("Unexpected reset, loading from notecard."+osGetNotecard(noteName));//for debugging saves and loads.
+            loadNote(llParseString2List(osGetNotecard(noteName),["
+"],[""]));
+        }
+        //Define each button/link
+        integer i;
+        for(i=2; i <= llGetNumberOfPrims(); i++)
+        {
+            linkedButtons += llGetLinkName(i);
+            llSetLinkAlpha(i,0,ALL_SIDES);
+        }
+        llSetText("",<1,1,1>,1);
+        //if loading skip new user setup
+        if(gender != -1)state running;
+        //new user ask the Question!
+        menuChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,4));;
+        llListen(menuChannel,"","","");
+        
+        llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+    }
+    touch_start(integer t)
+    {
+        llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+    }
+    
+    listen(integer c, string n, key id, string m)
+    {
+        if( id == llGetOwner() )
+        {
+            if(m == "Male")   gender = 0;
+            if(m == "Female") gender = 1;
+            //if(m == "Both")   gender = 2;//i tried it just didnt work. >.< Maybe just wear two? sorry.
+            string output;
+            output += "You chose ";
+            if(gender == 0) output += "male.";
+            if(gender == 1) output += "female.";
+            llOwnerSay(output);
+            if(gender != -1)state running;
+        }
+    }
+}
+state running
+{
+    state_entry()
+    {
+        //llSetLinkPrimitiveParams(llListFindList(linkedButtons, ["Cycle"])+2, [PRIM_ROT_LOCAL, (rotation)llList2Rot(nextCycleEventRotations, cycleStage)]);//set visual for female
+        
+        if(cycleTimer == 0){cycleTimer= llGetUnixTime();}//define now.
+        
+        nextRPDay = cycleTimer+((dayLength*60)*60);// define tomarrow once.
+        
+        menuChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,5));;
+        llListen(pingChannel,"","","");
+        llListen(pingRegionChannel,"","","");
+        llListen(menuChannel,"","","");
+        llSetTimerEvent(timerDelay);
+        updateLinkAlphas();
+        if(gender == 1)llSetLinkPrimitiveParams(llListFindList(linkedButtons, ["Cycle"])+2, [PRIM_ROT_LOCAL, (rotation)llList2Rot(nextCycleEventRotations, cycleStage)]);
+    }
+    attach(key id)
+    {
+        if(id == NULL_KEY)
+        {
+            llSetTimerEvent(0);
+        }
+        else
+        {
+            llSetTimerEvent(timerDelay);
+            if(canBirth == TRUE)llOwnerSay("Click the pink stage icon to have your baby.");
+        }
+    }
+    changed(integer c)
+    {
+        if(c & CHANGED_INVENTORY)
+        {
+            //If save, do nothing and do i need an if notecards edited?
+        }
+        if(c & CHANGED_OWNER && Owner != llGetOwner())
+        {
+            llRemoveInventory("Fertility - Data");
+            llResetScript();//intended
+        }
+    }
+    touch_start(integer t)
+    {
+        if(llDetectedKey(0) == llGetOwner())
+        {
+            longPress = 3;
+            held = TRUE;
+        }
+    }
+    touch_end(integer t)
+    {
+        if(held == TRUE && longPress <= 0)
+        {
+            held = FALSE;
+            return;
+        }
+        held = FALSE;
+        if(llGetLinkName(llDetectedLinkNumber(0)) == "Boy" || llGetLinkName(llDetectedLinkNumber(0)) == "Girl")
+        {
+            //Output list
+            string output = "Availible Users: \n";
+            integer i;
+            for(i=0; i<llGetListLength(otherUserKey); i++)
+            {
+                output += llGetDisplayName(llList2Key(otherUserKey,i))+" "+llList2String(otherUserGender,i);
+                if(llListFindList(llList2Key(otherUserKey,i),usersTargetingMe) != -1)
+                {
+                    output += " ❤";
+                }
+                output += ".\n";
+            }
+            llOwnerSay(output);
+        }
+        if(llGetLinkName(llDetectedLinkNumber(0)) == "Cycle" && gender == 1 && canBirth == TRUE)
+        {
+            llDialog(llGetOwner(),"Give birth to your baby?",["yes","no"],menuChannel);
+        }
+        if(llGetLinkName(llDetectedLinkNumber(0)) == "fertility Hud")
+        {
+            currentTarget = NULL_KEY;
+            list Buttons;
+            integer i;
+            for(i=0; i<=11; i++)
+            {
+                if(i < llGetListLength(otherUserKey) )
+                {
+                    string n = llGetDisplayName(llList2Key(otherUserKey,i));
+                    
+                    if(llGetListLength(otherUserKey) > 0 && llGetListLength(otherUserKey) <= 11)
+                    {
+                        Buttons += n;
+                    }
+                    if(llGetListLength(otherUserKey) > 11)
+                    {
+                        if( i != 2 )
+                        {
+                            Buttons += n;
+                        }
+                        else
+                        {
+                            Buttons += "Next";
+                        }
+                    }
+                    if(llGetListLength(otherUserKey) == 0)
+                    {
+                        Buttons += "No one.";
+                    }
+                }
+            }
+            //llOwnerSay(llDumpList2String(Buttons,["|"]));
+            llDialog(llGetOwner(),"Who to target??", Buttons, menuChannel);
+        }
+        if(llGetLinkName(llDetectedLinkNumber(0)) == "Cum" && gender == 0)
+        {
+            if(llListFindList(usersTargetingMe, currentTarget) != -1)//if my target is also targeting me.
+            {
+                llOwnerSay("Your trying to pewpew inside, "+llGetDisplayName(currentTarget)+".");
+                llRegionSayTo(currentTarget, pingChannel, "pew "+(string)cumBar);
+                lastPewPew = llGetUnixTime();
+                cumBar = 0;
+            }
+        }
+    }
+    link_message(integer link, integer n, string m, key id)
+    {
+        //this is where mod api will be done
+    //Get api
+        //Get basic Info
+            //get gender
+        if(llToLower(m) == "getgender")
+        {
+            llMessageLinked(LINK_SET, -1, "Gender|"+(string)gender,id);
+        }
+        //get sperm donor info
+            //get number of donor
+        if(llToLower(m) == "getdonornum")
+        {
+            llMessageLinked(LINK_SET, -1, "DonorNum|"+(string)llGetListLength(spermDonors),id);
+        }
+            //get donor key
+        if(llToLower(m) == "getdonorkeyat")
+        {
+            llMessageLinked(LINK_SET, -1, "DonorKey|"+(string)llList2String(spermDonors,n),id);
+        }
+            //get donor duration
+        if(llToLower(m) == "getdonordurationat")
+        {
+            llMessageLinked(LINK_SET, -1, "DonorDuration|"+(string)llList2String(spermExpires,n),id);
+        }
+        //get cycleinfo
+            //get stage
+        if(llToLower(m) == "getcyclestage" && gender == 1)
+        {
+            llMessageLinked(LINK_SET, -1, "CycleStage|"+(string)cycleStage,id);
+        }
+        //get pregnancyinfo
+            //get day/week
+        if(llToLower(m) == "getpregday")
+        {
+            llMessageLinked(LINK_SET, -1, "PregDay|"+(string)pregnancyDay,id);
+        }
+        if(llToLower(m) == "getpregweek")
+        {
+            llMessageLinked(LINK_SET, -1, "PregWeek|"+(string)termWeek,id);
+        }
+            //get baby daddy
+        if(llToLower(m) == "getdaddykey")
+        {
+            llMessageLinked(LINK_SET, -1, "DaddyKey|"+(string)babyDaddyKey,id);
+        }
+            //get canbirth
+        if(llToLower(m) == "getcanbirth")
+        {
+            llMessageLinked(LINK_SET, -1, "CanBirth|"+(string)canBirth,id);
+        }
+    //Set api
+        //Force Target
+        if(llToLower(m) == "settarget")
+        {
+            if(canForce == TRUE)currentTarget = id;
+        }
+         //set sperm donor infor
+            //remove donor key
+        if(llToLower(m) == "removedonor")
+        {
+            spermDonors = llDeleteSubList(spermDonors, n, n);//remove the old sperm when its found.
+            spermExpires = llDeleteSubList(spermExpires, n, n);//remove the donors time stamp.
+        }
+            //change donor duration
+        if(llToLower(m) == "setdonorduration")
+        {
+            //still deciding if i want to add this...
+        }
+        //set cycleinfo
+            //set stage
+        if(llToLower(m) == "setstage")
+        {
+            //still deciding if i want to add this...
+        }
+        //set pregnancyinfo
+            //intiate birth\
+        if(llToLower(m) == "startbirth")
+        {
+            //still deciding if i want to add this...
+        }
+    }
+    listen(integer c, string n, key id, string m)
+    {
+        if( c == menuChannel && id == llGetOwner()) //Menus
+        {
+            if(m == "yes")
+            {
+                llGiveInventory(llGetOwner(),"Fertility -  Baby");
+                cycleStage = 0;
+                pregnancyDay = 0;
+                canBirth = FALSE;
+                babyDaddyKey = NULL_KEY;
+            }
+            if(m == "no")
+            {
+                return;
+            }    
+            if(m == "next")
+            {
+                           list Buttons;
+            integer i;
+            for(i=12; i<=23; i++)
+            {
+                if(i < llGetListLength(otherUserKey) )
+                {
+                    string n = llGetDisplayName(llList2Key(otherUserKey,i));
+                    
+                    if(llGetListLength(otherUserKey) > 0 && llGetListLength(otherUserKey) <= 11)
+                    {
+                        Buttons += n;
+                    }
+                    if(llGetListLength(otherUserKey) > 23)
+                    {
+                        if( i != 2 )
+                        {
+                            Buttons += n;
+                        }
+                        else
+                        {
+                            Buttons += "Next";
+                        }
+                    }
+                    if(llGetListLength(otherUserKey) == 0)
+                    {
+                        Buttons += "No one.";
+                    }
+                }
+            }
+            //llOwnerSay(llDumpList2String(Buttons,["|"]));
+            if( Buttons != [] ) llDialog(llGetOwner(),"Who to target??", Buttons, menuChannel);
+            }
+            integer i;
+            for(i=0; i<llGetListLength(otherUserKey); i++)
+            {
+                if(m == llGetDisplayName(llList2Key(otherUserKey,i)) )
+                {
+                    //Set Selected Target
+                    currentTarget = llList2Key(otherUserKey,i);
+                    if(llListFindList(usersTargetingMe, currentTarget) != -1)
+                    {
+                        llSetText("❤❤ "+llGetDisplayName(currentTarget)+" ❤❤", <1,1,1>,1);
+                    }
+                    else
+                    {
+                        llSetText(">> "+llGetDisplayName(currentTarget), <1,1,1>,1);
+                    }
+                }
+            }
+        }
+        //if(id == llGetOwner())return;//if its owner speaking dont do anything below
+        if( c == pingChannel) //Whisper range
+        {
+            list str = llParseString2List(m,["|"],[""]);
+            if(m == "Ping" && gender != 0)//is a male
+            {
+                llRegionSayTo(id, pingChannel, "Pong");
+                if(llListFindList(otherUserKeyTemp, [llGetOwnerKey(id)]) == -1)
+                {
+                    otherUserKeyTemp += [llGetOwnerKey(id)];
+                    otherUserGenderTemp += ["♂"];
+                }
+            }
+            if(m == "Pong" && gender != 1)//is a female
+            {
+                if(llListFindList(otherUserKeyTemp, [llGetOwnerKey(id)]) == -1)
+                {
+                    otherUserKeyTemp += [llGetOwnerKey(id)];
+                    otherUserGenderTemp += ["♀"];
+                }
+            }
+            if(m == "❤")
+            {
+                if(llListFindList(usersTargetingMeTemp, [llGetOwnerKey(id)]) == -1)
+                {
+                    usersTargetingMeTemp += [llGetOwnerKey(id)];
+                }
+            }
+            if(llGetSubString(m,0,2) == "pew")
+            {
+                if(llListFindList(usersTargetingMe, currentTarget) != -1)
+                {
+                    float num = (float)llDeleteSubString(m,0,3);
+                    if(num > 1)return;//no spoofing longer lasting seed. get ignored!
+                    
+                    llOwnerSay(llGetDisplayName(llGetOwnerKey(id))+" just came inside you.");
+                    llInstantMessage(llGetOwnerKey(id),"You just came inside, "+llGetDisplayName(llGetOwner())+".");
+                    
+                    spermDonors += llGetOwnerKey(id);
+                    spermExpires += cycleTimer+(num*((dayLength*60)*60));
+                }
+            }
+            updateLinkAlphas();
+        }
+        if( c == pingRegionChannel) //region range
+        {
+            list str = llParseString2List(m,["|"],[""]);
+            if(m == "Ping" && gender != 0)//is a male
+            {
+                llRegionSayTo(id, pingChannel, "Pong");
+                if(llListFindList(otherUserKey, [llGetOwnerKey(id)]) == -1) otherRegionUserGender += ["♂"];
+            }
+            if(m == "Pong" && gender != 1)//is a female
+            {
+                if(llListFindList(otherUserKey, [llGetOwnerKey(id)]) == -1)otherRegionUserGender += ["♀"];
+            }
+            updateLinkAlphas();
+        }
+    }
+    timer()
+    {
+        if(held == TRUE && longPress>0)longPress--;
+        if(held == TRUE && longPress<=0)
+        {
+            llDialog(llGetOwner(),"Secret options man:",["reset"],menuChannel);
+        }
+        //Random Event tick
+        tick++;
+        if(tick >= 20)tick =0;
+        //Scan for others tick
+        scanTick++;
+        if(scanTick >= 2){scanTick=0;}
+        //save tick
+        saveTick++;
+        if(saveTick >= 5){saveTick=0;}
+        
+        if(tick == 0)//listen i know this isnt great...
+        {
+            //progress random event ticks. tummy talkers, magic, other...
+        }
+        if(scanTick == 0)
+        {
+            //My hacky way of by passing lots of list checking adding and removing.
+            
+            //dump temp list into used list
+            otherUserKey = otherUserKeyTemp;
+            otherUserGender = otherUserGenderTemp;
+            otherRegionUserGender = otherRegionUserGenderTemp;
+            usersTargetingMe = usersTargetingMeTemp;
+            //clear temp list to listen for pings and responces.
+            otherUserKeyTemp = [];
+            otherUserGenderTemp = [];
+            otherRegionUserGenderTemp = [];
+            usersTargetingMeTemp = [];
+        }
+        if(saveTick == 0)
+        {
+            osMakeNotecard(noteName, saveData());
+        }
+
+        //Pings
+        if(gender == 0)//male, Only males ping. And load builds up to full.
+        {
+            if(llGetUnixTime() >= lastPewPew)
+            {
+                lastPewPew = llGetUnixTime()+3;
+                if(cumBar< 1)cumBar += 0.1;
+                if(cumBar> 1)cumBar = 1;
+            }
+            llWhisper(pingChannel, "Ping");
+            llRegionSay(pingRegionChannel, "Ping");
+        }
+        if(gender == 1)//female, Only females pong. Cycle stage, Remove sperm donors, Check for pregnant. Pregnancy.
+        {
+            cycleTimer = llGetUnixTime();
+            while(cycleTimer >= nextRPDay) //if more then one day has passed then step up to current day.
+            {
+                offlineRPDays++;
+                nextRPDay = nextRPDay+((dayLength*60)*60);//add a day
+                   
+                rpDay++;
+                if(cycleStage != -1)//not pregnant
+                {
+                    if(rpDay >= llList2Integer(nextCycleEventTime, cycleStage) )
+                    {
+                        cycleStage++;
+                        llMessageLinked(LINK_SET,0,"",NULL_KEY);
+                        if(cycleStage == 4)cycleStage=0;
+                        llSetLinkPrimitiveParams(llListFindList(linkedButtons, ["Cycle"])+2, [PRIM_ROT_LOCAL, (rotation)llList2Rot(nextCycleEventRotations, cycleStage)]);
+                        rpDay = 0;
+                    }
+                    
+                    if(llGetListLength(spermDonors) > 0)//is sperm present?
+                    {
+                        if(cycleStage == 1)//is fertile
+                        {
+                            if(llRound(llFrand(100)) < fertilityChance)//did the sperm find the egg and implant
+                            {
+                                //Yay your pregnant
+                                //llOwnerSay("Pregnancy confirmed.");
+                                //Should I change this so it doesnt immediatly say pregnant? wait till period would trigger and instead go to pregnant.
+                                cycleStage = -1;
+                                babyDaddyKey = llList2Key(spermDonors,llFloor(llFrand(llGetListLength(spermDonors))));
+                                saveTick = 100;
+                            }
+                        }
+                        if(cycleStage == 3)//is period!
+                        {
+                            spermDonors = [];
+                            spermExpires = [];
+                        }
+                        integer i;
+                        for(i=0; i<llGetListLength(spermDonors); i++)//check all sperm
+                        {
+                            if(nextRPDay >= (integer)llList2Integer(spermExpires,i) )//is sperm to old?
+                            {
+                                spermDonors = llDeleteSubList(spermDonors, i, i);//remove the old sperm when its found.
+                                spermExpires = llDeleteSubList(spermExpires, i, i);//remove the donors time stamp.
+                            } 
+                        }
+                    }
+                }
+                if(cycleStage == -1)//if you are pregnant
+                {
+                    if(rpDay >= 1)//keep track of current rp day of term, display as float text
+                    {
+                        while(rpDay <= (pregnancyTermLengthInDay- pregnancyDay))
+                        {
+                            pregnancyDay++;
+                            rpDay--;
+                            llMessageLinked(LINK_SET,0,"%#Pregnancy Day: "+(string)pregnancyDay,NULL_KEY);//will need a link msg to display from link prim...
+                        }
+                        if(rpDay > (pregnancyTermLengthInDay- pregnancyDay))
+                        {
+                            pregnancyDay = pregnancyTermLengthInDay;
+                            rpDay = 0;
+                            llMessageLinked(LINK_SET,0,"Pregnancy due now.",NULL_KEY);//will need a link msg to display from link prim...
+                        }
+                    }
+                    //check if stepping into trigger stage "week 1 week 2" then trigger third party "shape change, other attachments"
+                    if( termWeek < llFloor(rpDay/7) )
+                    {
+                        termWeek = llFloor(rpDay/7);
+                        // do new week event here.
+                    }
+                    if(pregnancyDay >= pregnancyTermLengthInDay) //check if rp days >= term
+                    {
+                        canBirth = TRUE;
+                    }
+                    else
+                    {
+                        canBirth = FALSE;
+                    }
+                }
+                if(offlineRPDays != 0)
+                {
+                    if(offlineRPDays > 1)llOwnerSay(offlineRPDays+" RP days have passed.");
+                    offlineRPDays=0;
+                    saveTick = 100;
+                }
+            }
+        }//female end
+        updateLinkAlphas();//called often for detection pims
+        if(currentTarget != NULL_KEY) llRegionSayTo(currentTarget,pingChannel, "❤");
+    }
+}
