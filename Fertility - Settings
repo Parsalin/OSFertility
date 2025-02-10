@@ -1,0 +1,24 @@
+#Define your gender so it doesnt ask on reset, -1 undecided,  0 male, 1 female
+gender=-1
+#Show cycle indicator for females, 0 false 1 true
+showCycle=0
+#Chance you will get pregnant, 0-100 <= chance is pregnant (lower is less likely)
+fertilityChance=20
+#max number of different sperm doners before others knock the oldest out
+maxDonors=6
+#length in rl hours an rp day takes 
+dayLength=6
+#pregnancy term in Rp Days
+pregnancyTermLengthInDay=280
+#Only your partner will see you and you will only see your partner
+onlyPartner=-1
+#RLV ((Cannot be detached. You can be force-sat via this hud.)) >Off by Default< 0 off, 1 on
+allowRLV=O
+#Enables the force feature allowing men to play a brief mini gaame to force you to target them. >off by default<  0 off 1 on
+allowForce=O
+#Cycle has 4 stages, How many rp days should each take? 0 skips that stage (dont skip all)
+cycleTimeOvulate=5
+cycleTimeFertile=5
+cycleTimePeriod=5
+cycleTimeRecovery=15
+#EOF
