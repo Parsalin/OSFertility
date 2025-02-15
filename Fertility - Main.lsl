@@ -416,7 +416,7 @@ default
             //new user ask the Question!
             menuChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,4));
             llListen(menuChannel,"","","");
-            llOwnerSay("Welcome to Fertility, \nRemember do not trust third-party versions.");
+            llOwnerSay("Welcome to Fertility. \nRemember do not trust third-party versions.");
             llDialog(llGetOwner(), "\nRun in online or offline mode?
   Online mode will save your data to a server off grid.
   Offline mode only stores your data in the hud.", ["Online", "Offline"],menuChannel);
