@@ -130,11 +130,11 @@ string getAllSaveDataForDB()
     //http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=save:"+getAllSaveDataForDB());
     string data = "";
     if(gender == -1)return [-1];
-    data += "Name="+ (string)llKey2Name(llGetOwner());
+    data += "Name="+ (string)llKey2Name(Owner);
     data += "|TOD="+ (string)now;
     data += "|Gender="+ (string)gender;
     //data += "|HudVersion="+ (string)globalVersion;
-//If your a women
+//If you're a women
     if(gender == 1)
     {
     //Add to data cyclestage data
@@ -164,7 +164,7 @@ string getAllSaveDataForDB()
         data += "|Donors="+ theseDonors;
         data += "|Expires="+ theseExpires;
         
-    //If your pregnant
+    //If you're pregnant
         if(cycleStage == -1)
         {
             //Send
@@ -194,26 +194,28 @@ loadFromDB(list Values)
     for(i=0; i<llGetListLength(Values); i++)
     {
         list Value = llParseString2List(llList2String(Values,i), ["="], [""]);
+        string Key = llToLower(llList2String(Value, 0));
+        string KeyValue = llList2String(Value, 1);
             if(debugSpam == TRUE)llOwnerSay("DB: "+llDumpList2String(Value, ["="]));
             
-            if(llToLower(llList2String(Value, 0)) == "name")
+            if(Key == "name")
             {
-                Name = llList2String(Value, 1);
-                debugingDB += Name + " | "+ llList2String(Value, 1);
+                Name = KeyValue;
+                debugingDB += Name + " | "+ KeyValue;
             }
-            if(llToLower(llList2String(Value, 0)) == "gender")
+            else if(Key == "gender")
             {
-                gender = llList2Integer(Value, 1);
-                debugingDB += (string)gender + " | "+ llList2String(Value, 1);
+                gender = (integer)KeyValue;
+                debugingDB += (string)gender + " | "+ KeyValue;
             }
-            if(llToLower(llList2String(Value, 0)) == "tod")
+            else if(Key == "tod")
             {
-                now = llList2Integer(Value, 1);
-                debugingDB += (string)now + " | "+ llList2String(Value, 1);
+                now = (integer)KeyValue;
+                debugingDB += (string)now + " | "+ KeyValue;
             }
-            if(llToLower(llList2String(Value, 0)) == "donors")
+            else if(Key == "donors")
             {
-                if(llList2String(Value, 1) == "" || llList2String(Value, 1) == "None" )
+                if(KeyValue == "" || KeyValue == "None" )
                 {
                     spermDonors = [];
                     debugingDB += llDumpList2String(spermDonors, ",") + " | "+ "''";
@@ -222,10 +224,10 @@ loadFromDB(list Values)
                 }
                 else
                 {
-                    list theseSperm = llParseString2List(llList2String(Value, 1),[","],[""]);
+                    list theseSperm = llParseString2List(KeyValue,[","],[""]);
                     if(llGetListLength(theseSperm) <= 1)
                     {
-                        spermDonors =  llList2String(Value, 1);
+                        spermDonors =  KeyValue;
                     }
                     else
                     {
@@ -236,22 +238,22 @@ loadFromDB(list Values)
                             i++;
                         }
                     }
-                    debugingDB += (string)llGetListLength(spermDonors)+" "+llDumpList2String(spermDonors, ",") + " | "+ llList2String(Value, 1);
+                    debugingDB += (string)llGetListLength(spermDonors)+" "+llDumpList2String(spermDonors, ",") + " | "+ KeyValue;
                 }
             }
-            if(llToLower(llList2String(Value, 0)) == "expires")
+            else if(Key == "expires")
             {
-                if(llList2String(Value, 1) == "" || llList2String(Value, 1) == "None" )
+                if(KeyValue == "" || KeyValue == "None" )
                 {
                     spermExpires = [];
                     debugingDB += llDumpList2String(spermExpires, ",") + " | "+ "''";
                 }
                 else
                 {
-                    list theseExpires = llParseString2List(llList2String(Value, 1),[","],[""]);
+                    list theseExpires = llParseString2List(KeyValue,[","],[""]);
                     if(llGetListLength(theseExpires) <= 1)
                     {
-                        spermExpires =  llList2String(Value, 1);
+                        spermExpires =  KeyValue;
                     }
                     else
                     {
@@ -262,24 +264,23 @@ loadFromDB(list Values)
                             i++;
                         }
                     }
-                    debugingDB += (string)llGetListLength(spermExpires)+" "+llDumpList2String(spermExpires,",") + " | "+ llList2String(Value, 1);
+                    debugingDB += (string)llGetListLength(spermExpires)+" "+llDumpList2String(spermExpires,",") + " | "+ KeyValue;
                 }
             }
-
-            if(llToLower(llList2String(Value, 0)) == "babydaddy")
+            else if(Key == "babydaddy")
             {
-                babyDaddyKey = llList2String(Value, 1);
-                debugingDB += (string)babyDaddyKey + " | "+ llList2String(Value, 1);
+                babyDaddyKey = KeyValue;
+                debugingDB += (string)babyDaddyKey + " | "+ KeyValue;
             }
-            if(llToLower(llList2String(Value, 0)) == "termday")
+            else if(Key == "termday")
             {
-                pregnancyDay = llList2Integer(Value, 1);
-                debugingDB += (string)pregnancyDay + " | "+ llList2String(Value, 1);
+                pregnancyDay = (integer)KeyValue;
+                debugingDB += (string)pregnancyDay + " | "+ KeyValue;
             }
-            if(llToLower(llList2String(Value, 0)) == "cyclestage")
+            else if(Key == "cyclestage")
             {
-                cycleStage = llList2Integer(Value, 1);
-                debugingDB += (string) cycleStage + " | "+ llList2String(Value, 1);
+                cycleStage = (integer)KeyValue;
+                debugingDB += (string) cycleStage + " | "+ KeyValue;
             }
             debugingDB +="\n";
     }
@@ -297,15 +298,14 @@ integer getLinkFromList(string name)
 }
 integer checkMenuNeeded()
 {
-    integer needed = FALSE;
     //If linked
     if(llListFindList(usersTargetingMe,currentTarget) != -1 )
     {
-        needed = TRUE;
+        return TRUE;
     }
     //if victim near by
     //if mod actions available
-    return needed;
+    return FALSE;
 }
 list getActionsMenu()
 {
@@ -325,7 +325,7 @@ updateLinkAlphas()
         llSetLinkAlpha(getLinkFromList("Online"),onlineMode,ALL_SIDES);
         llSetLinkAlpha(getLinkFromList("Offline"),!onlineMode,ALL_SIDES);
     }
-    if(gender == 0)//your a boy show boys stuff
+    if(gender == 0)//you're a boy show boys stuff
     {
             if(llGetListLength(otherUserKey) == 0)
             {
@@ -344,7 +344,7 @@ updateLinkAlphas()
                 llSetLinkAlpha(getLinkFromList("girl Hearts"),1,ALL_SIDES);
             }
         }
-        if(gender == 1)//your a girl show girl stuff
+        if(gender == 1)//you're a girl show girl stuff
         {
             if(showCycle == 0)
             {
@@ -399,8 +399,9 @@ default
 {
     state_entry()
     {
-        if(llGetOwner() != "9a9304c2-620d-496a-ba50-2bf45cf8dbd9")debugSpam = FALSE;
         Owner = llGetOwner();
+        if(Owner != "9a9304c2-620d-496a-ba50-2bf45cf8dbd9")debugSpam = FALSE;
+        
         //Set link alphas
         integer i;
         for(i=2; i <= llGetNumberOfPrims(); i++)
@@ -417,7 +418,7 @@ default
             menuChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,4));
             llListen(menuChannel,"","","");
             llOwnerSay("Welcome to Fertility. \nRemember do not trust third-party versions.");
-            llDialog(llGetOwner(), "\nRun in online or offline mode?
+            llDialog(Owner, "\nRun in online or offline mode?
   Online mode will save your data to a server off grid.
   Offline mode only stores your data in the hud.", ["Online", "Offline"],menuChannel);
         }
@@ -433,7 +434,7 @@ default
             }
             else
             {
-                llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
             }
         }
         else
@@ -442,12 +443,12 @@ default
             {
                 llResetScript();
             }
-            if(initialize == 1)
+            else if(initialize == 1)
             {
                 password = "";
-                llTextBox(llGetOwner(), "Type in your password:", menuChannel);
+                llTextBox(Owner, "Type in your password:", menuChannel);
             }
-            if(initialize == 2)
+            else if(initialize == 2)
             {
                     if (llGetInventoryType(NOTECARD) != INVENTORY_NONE)
                     {
@@ -456,14 +457,14 @@ default
                     }
                     else
                     {
-                        llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                        llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
                     }
             }
         }
     }
     listen(integer c, string n, key id, string m)
     {
-        if( id == llGetOwner() )
+        if( id == Owner )
         {
             if(initialize == 0)// mode selected
             {
@@ -471,12 +472,12 @@ default
                 {
                     initialize = 1;
                     onlineMode = 1;//online mode
-                    username = llGetOwner();
+                    username = Owner;
                     password = "";
-                    llTextBox(llGetOwner(), "Type in your password:", menuChannel);
+                    llTextBox(Owner, "Type in your password:", menuChannel);
                     return;
                 }
-                if(m == "Offline")
+                else if(m == "Offline")
                 {
                     initialize = 2;
                     onlineMode = 0;//offline mode
@@ -489,12 +490,12 @@ default
                     }
                     else
                     {
-                        llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                        llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
                     }
                     return;
                 }
             }
-            if(initialize == 1)//password offered try it
+            else if(initialize == 1)//password offered try it
             {
                 if(onlineMode == 1 && password == "")
                 {
@@ -503,7 +504,7 @@ default
                     http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=Load:Name|Gender|TOD|Donors|Expires|BabyDaddy|TermDay|CycleStage");
                 }
             }
-            if(initialize == 2)//offline choose gender
+            else if(initialize == 2)//offline choose gender
             {
                 if(m == "Male")   gender = 0;
                 if(m == "Female") gender = 1;
@@ -533,7 +534,7 @@ default
             }
             else
             {
-                llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
             }
         }
         
@@ -545,10 +546,10 @@ default
              http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=new:");
         }
         //wrong password try again
-        if(body == "ErrorUserPwd")
+        else if(body == "ErrorUserPwd")
         {
             password = "";
-            llTextBox(llGetOwner(), "Wrong password, Type in your password:", menuChannel);
+            llTextBox(Owner, "Wrong password, Type in your password:", menuChannel);
             return;
         }
         list bits = llParseString2List(body, ["|"],[""]);
@@ -566,12 +567,12 @@ default
                 }
                 else
                 {
-                    llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                    llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
                 }
                 return;
             }
         }
-        if(llList2String(bits,0)  == "CM=Load")
+        else if(llList2String(bits,0)  == "CM=Load")
         {
             if(llList2String(bits,1) == "Name=None")
             {
@@ -601,7 +602,7 @@ default
                 llOwnerSay("Loaded settings from notecard.");
                 if(gender == -1)
                 {
-                    llDialog(llGetOwner(),"Gender?", ["Male", "Female"], menuChannel);
+                    llDialog(Owner,"Gender?", ["Male", "Female"], menuChannel);
                     return;
                 }
                 else
@@ -615,14 +616,15 @@ default
             if (llGetSubString (strData, 0, 0) != "#")              // is it a comment?
             {
                 list data = llParseString2List(strData,["="],[]);//split around the =
+                string field = llList2String(data,0);
                 if(debugSpam == TRUE)llOwnerSay("NC: "+llDumpList2String(data, ["="]));
-                if(llList2String(data,0) == "gender" && gender == -1)   gender = llList2Integer(data,1);
-                if(llList2String(data,0) == "showCycle")   showCycle = llList2Integer(data,1);
-                if(llList2String(data,0) == "fertilityChance")fertilityChance = llList2Integer(data,1);
-                if(llList2String(data,0) == "maxDonors")maxDonors = llList2Integer(data,1);
-                if(llList2String(data,0) == "dayLength")dayLength = llList2Integer(data,1);
-                if(llList2String(data,0) == "pregnancyTermLengthInDay")pregnancyTermLengthInDay = llList2Integer(data,1);
-                if(llList2String(data,0) == "onlyPartner")
+                if(field == "gender" && gender == -1) { gender = llList2Integer(data,1); }
+                else if(field == "showCycle") {   showCycle = llList2Integer(data,1);}
+                else if(field == "fertilityChance") { fertilityChance = llList2Integer(data,1);}
+                else if(field == "maxDonors") { maxDonors = llList2Integer(data,1);}
+                else if(field == "dayLength") { dayLength = llList2Integer(data,1);}
+                else if(field == "pregnancyTermLengthInDay") { pregnancyTermLengthInDay = llList2Integer(data,1);}
+                else if(field == "onlyPartner")
                 {
                     if(llList2Integer(data,1) != -1)
                     {
@@ -634,20 +636,19 @@ default
                     }
                 }
             //RLV ((Cannot be detached. You can be force-sat via this hud.)) >Off by Default< 0 off, 1 on
-                if(llList2String(data,0) == "allowRLV")
+                else if(field == "allowRLV")
                 {
                     
                 }
             //Enables the force features. >off by default<  0 off 1 on
-                if(llList2String(data,0) == "allowForce")
+                else if(field == "allowForce")
                 {
                     
                 }
-
-                if(llList2String(data,0) == "cycleTimeOvulate")nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),0,0);
-                if(llList2String(data,0) == "cycleTimeFertile")nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),1,1);
-                if(llList2String(data,0) == "cycleTimePeriod")nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),2,2);
-                if(llList2String(data,0) == "cycleTimeRecovery")nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),3,3);
+                else if(field == "cycleTimeOvulate") { nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),0,0);}
+                else if(field == "cycleTimeFertile") { nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),1,1);}
+                else if(field == "cycleTimePeriod") { nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),2,2);}
+                else if(field == "cycleTimeRecovery") { nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),3,3);}
             }
         }
     }
@@ -659,7 +660,7 @@ state running
         intLine1=0;
         if(now == 0){now= llGetUnixTime();}//define now.
         nextRPDay = now+((dayLength*60)*60);// define tomorrow once.
-        menuChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,5));;
+        menuChannel = (integer)("0x"+llGetSubString((string)Owner,0,5));;
         llListen(pingChannel,"","","");
         llListen(pingRegionChannel,"","","");
         llListen(menuChannel,"","","");
@@ -711,7 +712,7 @@ state running
     }
     touch_start(integer t)
     {
-        if(llDetectedKey(0) == llGetOwner())
+        if(llDetectedKey(0) == Owner)
         {
             longPress = 3;
             held = TRUE;
@@ -719,7 +720,7 @@ state running
     }
     touch_end(integer t)
     {
-        if(llDetectedKey(0) != llGetOwner() )return;
+        if(llDetectedKey(0) != Owner )return;
         
         if(held == TRUE && longPress <= 0)
         {
@@ -727,12 +728,13 @@ state running
             return;
         }
         held = FALSE;
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "Menu")
+        string clicked_on = llGetLinkName(llDetectedLinkNumber(0));
+        if(clicked_on == "Menu")
         {
             list buttons = getActionsMenu();
-            if(llGetListLength(buttons) >= 1) llDialog(llGetOwner(), "What would you like to do?", buttons, menuChannel);
+            if(llGetListLength(buttons) >= 1) llDialog(Owner, "What would you like to do?", buttons, menuChannel);
         }
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "Boy" || llGetLinkName(llDetectedLinkNumber(0)) == "Girl")
+        else if(clicked_on == "Boy" || clicked_on == "Girl")
         {
             //Output list
             string output = "Available Users: \n";
@@ -748,7 +750,7 @@ state running
             }
             llOwnerSay(output);
         }
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "Online" || llGetLinkName(llDetectedLinkNumber(0)) == "Offline")
+        else if(clicked_on == "Online" || clicked_on == "Offline")
         {
             if(onlineMode == 1)
             {
@@ -757,32 +759,33 @@ state running
             else
             {
                 changeLineMode = TRUE;
-                llDialog(llGetOwner(),"You are about to switch from offline to online mode, Choose:
+                llDialog(Owner,"You are about to switch from offline to online mode, Choose:
 Save - Save your current state to DB.
 Load - Load your state from DB.
 Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
             }
         }
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "Cycle" && gender == 1 && canBirth == TRUE)
+        else if(clicked_on == "Cycle" && gender == 1 && canBirth == TRUE)
         {
-            llDialog(llGetOwner(),"Give birth to your baby?",["yes","no"],menuChannel);
+            llDialog(Owner,"Give birth to your baby?",["yes","no"],menuChannel);
         }
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "fertility Hud")
+        else if(clicked_on == "fertility Hud")
         {
             currentTarget = NULL_KEY;
             list Buttons;
             integer i;
+            integer num_other_user_keys = llGetListLength(otherUserKey);
             for(i=0; i<=11; i++)
             {
-                if(i < llGetListLength(otherUserKey) )
+                if(i < num_other_user_keys )
                 {
                     string n = llGetUsername(llList2Key(otherUserKey,i));
                     
-                    if(llGetListLength(otherUserKey) > 0 && llGetListLength(otherUserKey) <= 11)
+                    if(num_other_user_keys > 0 && num_other_user_keys <= 11)
                     {
                         if(n != "")Buttons += n;//test
                     }
-                    if(llGetListLength(otherUserKey) > 11)
+                    if(num_other_user_keys > 11)
                     {
                         if( i != 2 )
                         {
@@ -793,18 +796,18 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                             Buttons += "Next";
                         }
                     }
-                    if(llGetListLength(otherUserKey) == 0)
+                    if(num_other_user_keys == 0)
                     {
                         Buttons += "No one.";
                     }
                 }
             }
             //llOwnerSay(llDumpList2String(Buttons,["|"]));
-            llDialog(llGetOwner(),"Who to target?", Buttons, menuChannel);
+            llDialog(Owner,"Who to target?", Buttons, menuChannel);
         }
-        if(llGetLinkName(llDetectedLinkNumber(0)) == "Settings" && Settings > 0)
+        else if(clicked_on == "Settings" && Settings > 0)
         {
-            llDialog(llGetOwner(),"Settings:
+            llDialog(Owner,"Settings:
     Restart - Will erase all data and reset hud.
     Data - Will dump all saved data to chat.", ["Restart", "Data"], menuChannel);
         }
@@ -816,7 +819,8 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
     //Get api
         //Get basic Info
             //get gender
-        if(llToLower(m) == "getgender")
+        strinc m_lc = llToLower(m);
+        if(m_lc == "getgender")
         {
             llMessageLinked(LINK_SET, -1, "Gender|"+(string)gender,id);
         }
@@ -824,79 +828,79 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
         {
             //get sperm donor info
                 //get number of donor
-            if(llToLower(m) == "getdonornum")
+            if(m_lc == "getdonornum")
             {
                 llMessageLinked(LINK_SET, -1, "DonorNum|"+(string)llGetListLength(spermDonors),id);
             }
                 //get donor key
-            if(llToLower(m) == "getdonorkeyat")
+            else if(m_lc == "getdonorkeyat")
             {
                 llMessageLinked(LINK_SET, -1, "DonorKey|"+(string)llList2String(spermDonors,n),id);
             }
                 //get donor duration
-            if(llToLower(m) == "getdonordurationat")
+            else if(m_lc == "getdonordurationat")
             {
                 llMessageLinked(LINK_SET, -1, "DonorDuration|"+(string)llList2String(spermExpires,n),id);
             }
             //get cycleinfo
             //get stage
-            if(llToLower(m) == "getcyclestage")
+            else if(m_lc == "getcyclestage")
             {
                 llMessageLinked(LINK_SET, -1, "CycleStage|"+(string)cycleStage,id);
             }
             //get pregnancyinfo
                 //get day/week
-            if(llToLower(m) == "getpregday")
+            else if(m_lc == "getpregday")
             {
                 llMessageLinked(LINK_SET, -1, "PregDay|"+(string)pregnancyDay,id);
             }
-            if(llToLower(m) == "getpregweek")
+            else if(m_lc == "getpregweek")
             {
                 llMessageLinked(LINK_SET, -1, "PregWeek|"+(string)termWeek,id);
             }
                 //get baby daddy
-            if(llToLower(m) == "getdaddykey")
+            else if(m_lc == "getdaddykey")
             {
                 llMessageLinked(LINK_SET, -1, "DaddyKey|"+(string)babyDaddyKey,id);
             }
                 //get canbirth
-            if(llToLower(m) == "getcanbirth")
+            else if(m_lc == "getcanbirth")
             {
                 llMessageLinked(LINK_SET, -1, "CanBirth|"+(string)canBirth,id);
             }
         }
     //Set api
         //Force Target
-        if(llToLower(m) == "settarget")
+        if(m_lc == "settarget")
         {
             if(canForce == TRUE)currentTarget = id;
         }
          //set sperm donor infor
             //remove donor key
-        if(llToLower(m) == "removedonor")
+        else if(m_lc == "removedonor")
         {
             spermDonors = llDeleteSubList(spermDonors, n, n);//remove the old sperm when it's found.
             spermExpires = llDeleteSubList(spermExpires, n, n);//remove the donors time stamp.
         }
             //change donor duration
-        if(llToLower(m) == "setdonorduration")
+        else if(m_lc == "setdonorduration")
         {
             //still deciding if i want to add this...
         }
         //set cycleinfo
             //set stage
-        if(llToLower(m) == "setstage")
+        else if(m_lc == "setstage")
         {
             //still deciding if i want to add this...
         }
         //set pregnancyinfo
             //Show pregnant if pregnant
-        if(llToLower(m) == "showpregnant")
+        else if(m_lc == "showpregnant")
         {
             if(cycleStage == -1) showPregnant = TRUE;
         }
-            //intiate birth\
-        if(llToLower(m) == "startbirth")
+            //intiate birth
+        else if(m_lc == "startbirth")
         {
             //still deciding if i want to add this...
         }
@@ -917,11 +921,11 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                  llResetScript();
             }
             //wrong password try again
-            if(body == "ErrorUserPwd")
+            else if(body == "ErrorUserPwd")
             {
                 getPass = TRUE;
                 password = "";
-                llTextBox(llGetOwner(), "Wrong password, Type in your password:", menuChannel);
+                llTextBox(Owner, "Wrong password, Type in your password:", menuChannel);
                 return;
             }
         if(request_id == http_request_id)
@@ -943,19 +947,19 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                 onlineMode = 1;//online mode
             }
         }
-        if(request_id == http_request_version_id)
+        else if(request_id == http_request_version_id)
         {
             if(body == "CM=check|needsUpdate") //current < Global, Offer update.
             {
                 llOwnerSay("Your hud is outdated. Would you like to update?");
-                llDialog(llGetOwner(),"Your hud is outdated. Receive new one now?", ["Send it.", "I'll wait."], menuChannel);
+                llDialog(Owner,"Your hud is outdated. Receive new one now?", ["Send it.", "I'll wait."], menuChannel);
                 canVersion = TRUE;
             }
-            if(body == "CM=check|okVersion") //current matches what is one file, stop asking
+            else if(body == "CM=check|okVersion") //current matches what is one file, stop asking
             {
                 canVersion = FALSE;
             }
-            if(body == "CM=check|okUpdated") //current = global, save personal.
+            else if(body == "CM=check|okUpdated") //current = global, save personal.
             {
                 canVersion = FALSE;
                 http_request_version_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=save:Version="+(string)globalVersion);
@@ -964,7 +968,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
     }
     listen(integer c, string n, key id, string m)
     {
-        if( c == menuChannel && id == llGetOwner()) //Menus
+        if( c == menuChannel && id == Owner) //Menus
         {
             if(m == "Cum Inside" && gender == 0)
             {
@@ -984,9 +988,9 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                     {
                         saveOrload = 0;
                         getPass = TRUE;
-                        username = llGetOwner();
+                        username = Owner;
                         password = "";
-                        llTextBox(llGetOwner(), "Type in your password:", menuChannel);
+                        llTextBox(Owner, "Type in your password:", menuChannel);
                         return;
                     }
                     else
@@ -1002,15 +1006,15 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                         http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=save:"+getAllSaveDataForDB());
                     }
                 }
-                if(m == "Load")
+                else if(m == "Load")
                 {
                     if(password == "")
                     {
                         saveOrload = 1;
                         getPass = TRUE;
-                        username = llGetOwner();
+                        username = Owner;
                         password = "";
-                        llTextBox(llGetOwner(), "Type in your password:", menuChannel);
+                        llTextBox(Owner, "Type in your password:", menuChannel);
                         return;
                     }
                     else
@@ -1026,7 +1030,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                         http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=Load:Name|Gender|TOD|Donors|Expires|BabyDaddy|TermDay|CycleStage");
                     }
                 }
-                if(m == "Cancel")
+                else if(m == "Cancel")
                 {
                     llOwnerSay("Cancelled.");
                 }
@@ -1038,7 +1042,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                 {
                     llResetScript();//intended
                 }
-                if(m == "Data")
+                else if(m == "Data")
                 {
                     string output = "Output: \n";
                     output += "Owner "+(string)Owner+"\n";
@@ -1067,10 +1071,10 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                             if(i>2)llSetLinkAlpha(i,0,ALL_SIDES);
                         }
                         llMessageLinked(LINK_SET,0,"%# ",NULL_KEY);
-                        llOwnerSay("Saving..");
+                        llOwnerSay("Saving...");
                         http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=save:"+getAllSaveDataForDB());
                     }
-                    if(saveOrload == 1)
+                    else if(saveOrload == 1)
                     {
                         integer i;
                         for(i=2; i <= llGetNumberOfPrims(); i++)
@@ -1079,7 +1083,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                             if(i>2)llSetLinkAlpha(i,0,ALL_SIDES);
                         }
                         llMessageLinked(LINK_SET,0,"%# ",NULL_KEY);
-                        llOwnerSay("Loading..");
+                        llOwnerSay("Loading...");
                         http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=Load:Name|Gender|TOD|Donors|Expires|BabyDaddy|TermDay|CycleStage");
                     }
                     saveOrload = -1;
@@ -1088,7 +1092,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
             }
             if(m == "yes")
             {
-                llGiveInventory(llGetOwner(),"Fertility - Baby");
+                llGiveInventory(Owner,"Fertility - Baby");
                 cycleStage = 0;
                 pregnancyDay = 0;
                 canBirth = FALSE;
@@ -1096,38 +1100,39 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                 babyDaddyKey = NULL_KEY;
                 llMessageLinked(LINK_SET,0,"%# ",NULL_KEY);
             }
-            if(m == "no")
+            else if(m == "no")
             {
                 return;
             }
     //Respond to send new hud?
-            if(m == "Send it.")
+            else if(m == "Send it.")
             {
                 llOwnerSay("Your new hud is on its way...");
                 canVersion = FALSE;
-                http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=requestnewhud:"+(string)llGetOwner());
+                http_request_id = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "text/plain"], "UN="+username+"|PW="+password+"|CM=requestnewhud:"+(string)Owner);
             }
-            if(m == "I'll wait.")
+            else if(m == "I'll wait.")
             {
                 llOwnerSay("You can get a new one at the shop.");
                 canVersion = FALSE;
                 return;
             }
-            if(m == "next")
+            else if(m == "next")
             {
-                           list Buttons;
+              list Buttons;
+              integer num_other_user_keys = llGetListLength(otherUserKey);
             integer i;
             for(i=12; i<=23; i++)
             {
-                if(i < llGetListLength(otherUserKey) )
+                if(i < num_other_user_keys )
                 {
                     string n = llGetDisplayName(llList2Key(otherUserKey,i));
                     
-                    if(llGetListLength(otherUserKey) > 0 && llGetListLength(otherUserKey) <= 11)
+                    if(num_other_user_keys > 0 && num_other_user_keys <= 11)
                     {
                         Buttons += n;
                     }
-                    if(llGetListLength(otherUserKey) > 23)
+                    else if(num_other_user_keys > 23)
                     {
                         if( i != 2 )
                         {
@@ -1138,17 +1143,17 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                             Buttons += "Next";
                         }
                     }
-                    if(llGetListLength(otherUserKey) == 0)
+                    else if(num_other_user_keys == 0)
                     {
                         Buttons += "No one.";
                     }
                 }
             }
             //llOwnerSay(llDumpList2String(Buttons,["|"]));
-            if( Buttons != [] ) llDialog(llGetOwner(),"Who to target?", Buttons, menuChannel);
+            if( Buttons != [] ) llDialog(Owner,"Who to target?", Buttons, menuChannel);
             }
             integer i;
-            for(i=0; i<llGetListLength(otherUserKey); i++)
+            for(i=0; i<num_other_user_keys; i++)
             {
                 if(m == llGetUsername(llList2Key(otherUserKey,i)) )
                 {
@@ -1183,7 +1188,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                     }
                 }
             }
-            if(m == "Pong" && gender != 1)
+            else if(m == "Pong" && gender != 1)
             {
                 if(llListFindList(otherUserKeyTemp, [llGetOwnerKey(id)]) == -1)
                 {
@@ -1191,7 +1196,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                     otherUserGenderTemp += ["♀"];
                 }
             }
-            if(m == "❤")
+            else if(m == "❤")
             {
                 if(llListFindList(usersTargetingMeTemp, [llGetOwnerKey(id)]) == -1)
                 {
@@ -1209,7 +1214,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                     if(llListFindList(spermDonors, thisSpermDonor) == -1)
                     {
                         llOwnerSay(llGetDisplayName(llGetOwnerKey(id))+" just came inside you.");
-                        llInstantMessage(llGetOwnerKey(id),"You just came inside "+llGetDisplayName(llGetOwner())+".");
+                        llInstantMessage(llGetOwnerKey(id),"You just came inside "+llGetDisplayName(Owner)+".");
                         
                         spermDonors += thisSpermDonor;
                         spermExpires += now+(num*((dayLength*60)*60));
@@ -1236,7 +1241,7 @@ Cancel - Don't switch to online mode.", ["Save", "Load", "Cancel"], menuChannel)
                     else
                     {
                         llOwnerSay(llGetDisplayName(llGetOwnerKey(id))+" just came inside you again.");
-                        llInstantMessage(llGetOwnerKey(id),"You just came inside "+llGetDisplayName(llGetOwner())+" again.");
+                        llInstantMessage(llGetOwnerKey(id),"You just came inside "+llGetDisplayName(Owner)+" again.");
                         
                         spermExpires = llListReplaceList(spermExpires, [now+(num*((dayLength*60)*60))], llListFindList(spermDonors, thisSpermDonor), llListFindList(spermDonors, thisSpermDonor) );
                     }
