@@ -14,7 +14,7 @@ default
     }
     listen(integer c, string n, key id, string m)
     {
-        if(id == llGetOwner() || llGetOwnerKey(id) == llGetOwner())//only listen to owner and owner objects with relay
+        if(llGetOwnerKey(id) == llGetOwner())//only listen to owner and owner objects with relay. llGetOwnerKey will return id if id is avatar.
         {
             speakerKey = id;
             //do
@@ -22,7 +22,7 @@ default
             {
                 llMessageLinked(LINK_THIS, -1, "getcyclestage",id);
             }
-            if(llToLower(m) == "daddyname")
+            else if(llToLower(m) == "daddyname")
             {
                 llMessageLinked(LINK_THIS, -1, "getDaddyKey",id);
             }
@@ -38,15 +38,16 @@ default
         if(llList2String(data,0) == "CycleStage")
         {
             string msg = "Stage|";
-            if(llList2Integer(data,1) == -1 )
+            integer stage_number = llList2Integer(data,1);
+            if(stage_number == -1 )
             {
                 llMessageLinked(LINK_THIS, -1, "showPregnant",id);
                 msg +="Pregnant";
             }
-            if(llList2Integer(data,1) == 0 )msg +="Ovulate soon";
-            if(llList2Integer(data,1) == 1 )msg +="Fertile";
-            if(llList2Integer(data,1) == 2 )msg +="Period";
-            if(llList2Integer(data,1) == 3 )msg +="Recovery";
+            else if(stage_number == 0 ) { msg +="Ovulate soon";}
+            else if(stage_number == 1 ) { msg +="Fertile";}
+            else if(stage_number == 2 ) { msg +="Period";}
+            else if(stage_number == 3 ) { msg +="Recovery";}
             llRegionSayTo(speakerKey, relayChannel, msg);
         }
         if(llList2String(data,0) == "DaddyKey")
@@ -54,8 +55,8 @@ default
             
             string msg = "Daddy|";
             string name = llKey2Name(llList2Key(data,1));
-            if(name != "") 
-            {   
+            if(name != "")
+            {
                 msg += name;
             }
             else
