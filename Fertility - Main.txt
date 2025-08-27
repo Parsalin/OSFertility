@@ -71,7 +71,8 @@ integer showPregnant = FALSE;
 integer canBirth = FALSE;
 
 //Force/RLV
-integer canForce = FALSE;// if you make this true then the mod for force can force you to target others. How that is doen is defined there.
+integer canForce = FALSE;
+integer canRLV = FALSE;// if you make this true then the mod for force can force you to target others. How that is doen is defined there.
 
 //Fertility chance
 integer fertilityChance = 30;//Chance that all goes right and the egg fertilizes and implants. if set to 0 no cycle will run.
@@ -104,6 +105,7 @@ key currentTarget = NULL_KEY;
 
 //hud info
 list linkedButtons = [];//a list of all prims linked to the hud
+list buttons = [];
 
 //listener channels
 integer pingChannel= -91283;//arbitray but static ping channel
@@ -299,6 +301,11 @@ integer checkMenuNeeded()
 {
     integer needed = FALSE;
     //If linked
+    getActionsMenu();
+    if(buttons != [])
+    {
+        needed = TRUE;
+    }
     if(llListFindList(usersTargetingMe,currentTarget) != -1 )
     {
         needed = TRUE;
@@ -309,8 +316,23 @@ integer checkMenuNeeded()
 }
 list getActionsMenu()
 {
-    list buttons;
-    buttons = ["Cum Inside"];
+    buttons = [];
+    if(currentTarget != NULL_KEY)
+    {
+        if(llListFindList(usersTargetingMe, currentTarget) == -1)
+        {
+            buttons += ["Force"];
+        }
+    }
+    if(llListFindList(usersTargetingMe, currentTarget) != -1)
+    {
+        if(gender == 0)
+        {
+            buttons += ["Check"];
+            buttons += ["Cum Inside"];
+        }
+        if(gender == 1) buttons += ["Orgasm"];
+    }
     return buttons;
 }
 updateLinkAlphas()
@@ -636,12 +658,14 @@ default
             //RLV ((Cannot be detached. You can be force-sat via this hud.)) >Off by Default< 0 off, 1 on
                 if(llList2String(data,0) == "allowRLV")
                 {
-                    
+                    if(llList2Integer(data,1) == 0) canRLV = FALSE;
+                    if(llList2Integer(data,1) == 1) canRLV = TRUE;
                 }
             //Enables the force features. >off by default<  0 off 1 on
                 if(llList2String(data,0) == "allowForce")
                 {
-                    
+                    if(llList2Integer(data,1) == 0) canForce = FALSE;
+                    if(llList2Integer(data,1) == 1) canForce = TRUE;
                 }
 
                 if(llList2String(data,0) == "cycleTimeOvulate")nextCycleEventTime = llListReplaceList(nextCycleEventTime,llList2Integer(data,1),0,0);
@@ -869,7 +893,12 @@ Cancel, Dont switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
         //Force Target
         if(llToLower(m) == "settarget")
         {
-            if(canForce == TRUE)currentTarget = id;
+            if(canForce == TRUE)
+            {
+                currentTarget = id;
+                llOwnerSay("You have been forced open by "+llKey2Name(currentTarget));
+                llInstantMessage(currentTarget, llGetDisplayName(llGetOwner())+" has been forced open.");
+            }
         }
          //set sperm donor infor
             //remove donor key
@@ -966,6 +995,22 @@ Cancel, Dont switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
     {
         if( c == menuChannel && id == llGetOwner()) //Menus
         {
+            if(m == "Check" && gender == 0)
+            {
+                if(llListFindList(usersTargetingMe, currentTarget) != -1)//if my target is also targeting me.
+                {
+                   llOwnerSay("Your trying to check "+llGetUsername(currentTarget)+"'s current fertility...");
+                    llSay(pingChannel, "check "+(string)currentTarget);
+                }
+            }
+            if(m == "Force" && gender == 0)
+            {
+                if(llListFindList(usersTargetingMe, currentTarget) == -1)//if my target is also targeting me.
+                {
+                   llOwnerSay("Your trying to force "+llGetUsername(currentTarget)+".");
+                    llSay(pingChannel, "force "+(string)currentTarget);
+                }
+            }
             if(m == "Cum Inside" && gender == 0)
             {
                 if(llListFindList(usersTargetingMe, currentTarget) != -1)//if my target is also targeting me.
@@ -974,6 +1019,14 @@ Cancel, Dont switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
                     llRegionSayTo(currentTarget, pingChannel, "pew "+(string)cumBar);
                     lastPewPew = llGetUnixTime();
                     cumBar = 0;
+                }
+            }
+            if(m == "Orgasm" && gender == 1)
+            {
+                if(llListFindList(usersTargetingMe, currentTarget) != -1)//if my target is also targeting me.
+                {
+                   llOwnerSay("Your trying to coat "+llGetUsername(currentTarget)+"'s cock.");
+                    llRegionSayTo(currentTarget, pingChannel, "paw");
                 }
             }
             if(changeLineMode == TRUE)
@@ -1150,7 +1203,7 @@ Cancel, Dont switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
             integer i;
             for(i=0; i<llGetListLength(otherUserKey); i++)
             {
-                if(m == llGetUsername(llList2Key(otherUserKey,i)) )
+                if(m == llGetSubString(llGetUsername(llList2Key(otherUserKey,i)),0,22) )
                 {
                     //Set Selected Target
                     currentTarget = llList2Key(otherUserKey,i);
@@ -1196,6 +1249,22 @@ Cancel, Dont switch to online mode.", ["Save", "Load", "Cancel"], menuChannel);
                 if(llListFindList(usersTargetingMeTemp, [llGetOwnerKey(id)]) == -1)
                 {
                     usersTargetingMeTemp += [llGetOwnerKey(id)];
+                }
+            }
+            if(llGetSubString(m,0,2) == "paw")
+            {
+                if(llListFindList(usersTargetingMe, currentTarget) != -1)
+                {
+                    float num = (float)llDeleteSubString(m,0,3);
+                    if(num > 1)return;//no spoofing longer lasting seed. get ignored!
+                    
+                    key thisSpermDonor = llGetOwnerKey(id);
+                    if(llListFindList(spermDonors, thisSpermDonor) == -1)
+                    {
+                        llOwnerSay(llGetDisplayName(llGetOwnerKey(id))+" is orgasming all over your cock.");
+                        llInstantMessage(llGetOwnerKey(id),"You just coated "+llGetDisplayName(llGetOwner())+"'s Cock.");
+                        
+                    }
                 }
             }
             if(llGetSubString(m,0,2) == "pew")
