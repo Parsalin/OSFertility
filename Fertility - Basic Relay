@@ -1,5 +1,9 @@
 integer relayChannel;
+integer pingChannel= -91283;//arbitray but static ping channel
 key speakerKey;
+key requester;
+
+string ExternalRequest = "";
 
 default
 {
@@ -7,16 +11,47 @@ default
     {
             relayChannel = (integer)("0x"+llGetSubString((string)llGetOwner(),0,6));;
             llListen(relayChannel,"","","");
+            llListen(pingChannel,"","","");
     }
     on_rez(integer t)
     {
         llResetScript();
     }
+    timer()
+    {
+        //after timer do command unless stopped.
+        if(ExternalRequest == "getcyclestage")
+        {
+             
+        }
+    }
     listen(integer c, string n, key id, string m)
     {
         if(id == llGetOwner() || llGetOwnerKey(id) == llGetOwner())//only listen to owner and owner objects with relay
         {
-            speakerKey = id;
+                if(ExternalRequest != "");
+                {
+                    if(m == "Yes")
+                    {
+                        llMessageLinked(LINK_THIS, -1, ExternalRequest,llGetOwnerKey(requester));
+                    }
+                    if(m == "No")
+                    {
+                        llInstantMessage(requester, "Action Failed.");
+                    }
+                    if(m == "Give up")
+                    {
+                        llMessageLinked(LINK_THIS, -1, ExternalRequest,llGetOwnerKey(requester));
+                    }
+                    if(m == "Struggle")
+                    {
+                        //Random Chance.
+                        llInstantMessage(requester, "Action Failed.");
+                    }
+                    ExternalRequest = "";
+                    requester = "";
+                    speakerKey = id;
+            }
             //do
             if(llToLower(m) == "cycle")
             {
@@ -27,9 +62,22 @@ default
                 llMessageLinked(LINK_THIS, -1, "getDaddyKey",id);
             }
         }
-        else
+        if(pingChannel == c)
         {
-            //ask permission
+            list str = llParseString2List(m,[" "],[""]);
+            requester = id;
+            if (llList2String(str,1) != (string)llGetOwner() ) return;
+            if(llList2String(str,0) == "check")
+            {
+                ExternalRequest = "getcyclestage";
+                llDialog(llGetOwner(), "Your fertility stage is being checked... allow?", ["Yes", "No"], relayChannel);
+            }
+            if(llList2String(str,0) == "force")
+            {
+                ExternalRequest = "settarget";
+                llMessageLinked(LINK_THIS, -1, ExternalRequest,llGetOwnerKey(requester));
+                //llDialog(llGetOwner(), "Your being forced.", ["Struggle", "Give up"], relayChannel);
+            }
         }
     }
     link_message(integer link, integer n, string m, key id)
